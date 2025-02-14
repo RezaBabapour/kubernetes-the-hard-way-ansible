@@ -1,0 +1,49 @@
+---
+- name: Gather package manager fact manually
+  setup:
+    filter: ansible_pkg_mgr
+
+- name: Install packages using YUM (for CentOS/RHEL)
+  yum:
+    name: ['git', 'rsync']
+    state: present
+  when: "'yum' in ansible_facts['pkg_mgr']"
+
+- name: Install packages using APT (for Debian/Ubuntu)
+  apt:
+    name: ['git', 'rsync']
+    state: present
+    update_cache: yes
+  when: "'apt' in ansible_facts['pkg_mgr']"
+
+- name: Install kubectl
+  copy:
+    src: "{{ kubernetes.bin.directory }}/{{ kubernetes.version }}/kubectl"
+    dest: /usr/bin/kubectl
+    mode: a+x
+
+- name: Install cfssl  
+  copy:
+    src: "{{ kubernetes.bin.directory }}/cfssl_1.6.5_linux_amd64"
+    dest: /usr/bin/cfssl
+    mode: a+x
+
+- name: Install cfssljson
+  copy:
+    src: "{{ kubernetes.bin.directory }}/cfssljson_1.6.5_linux_amd64"
+    dest: /usr/bin/cfssljson
+    mode: a+x
+
+- name: Install Helm
+  copy:
+    src: "{{ kubernetes.bin.directory }}/helm-{{ kubernetes.helmVersion }}"
+    dest: /usr/bin/helm
+    mode: a+x
+
+- name: Add helm and kubectl bash completion 
+  shell: |
+    grep -q "source <(kubectl completion bash)" ~/.bashrc || echo "source <(kubectl completion bash)" >> ~/.bashrc
+    grep -q "alias k=kubectl" ~/.bashrc || echo "alias k=kubectl" >> ~/.bashrc
+    grep -q "complete -o default -F __start_kubectl k" ~/.bashrc || echo "complete -o default -F __start_kubectl k" >> ~/.bashrc
+    grep -q "helm completion bash" ~/.bashrc || echo "source <(helm completion bash)" >> ~/.bashrc
+

@@ -1,0 +1,30 @@
+all:
+  children:
+    simurgh:
+      hosts:
+        k8s-129:
+          ansible_host: 192.168.112.129
+        k8s-130:
+          ansible_host: 192.168.112.130
+        k8s-131:
+          ansible_host: 192.168.112.131
+    
+      children:
+        localhost_group:
+          hosts:
+            localhost:
+        etcd:
+          hosts:
+            k8s-129:
+            k8s-130:
+            k8s-131:
+        controller:
+          hosts:
+            k8s-129:
+            k8s-130:
+            k8s-131:
+        worker:
+          hosts:
+            k8s-129:
+            k8s-130:
+            k8s-131:

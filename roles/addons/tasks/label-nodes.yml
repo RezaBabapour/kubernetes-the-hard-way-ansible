@@ -1,0 +1,5 @@
+---
+- name: Label control-plane nodes
+  shell: |
+    kubectl label node {{ inventory_hostname }} node-role.kubernetes.io/control-plane=true
+

@@ -1,0 +1,33 @@
+global_defs {
+   vrrp_skip_check_adv_addr
+   vrrp_strict
+   vrrp_garp_interval 0
+   vrrp_gna_interval 0
+}
+
+vrrp_script apiserver_check {
+      script "/usr/bin/curl -s --cacert /var/lib/kubernetes/ca.pem https://{{ inventory_hostname }}:6443/healthz -o /dev/null"
+      interval 3
+      timeout 5
+      rise 3
+      fall 3
+}
+
+vrrp_instance VI_1 {
+    state BACKUP
+    interface ens160
+    virtual_router_id 80
+    priority 110
+    advert_int 1
+    authentication {
+        auth_type PASS
+        auth_pass kAb1O6
+    }
+    virtual_ipaddress {
+       {{ kubernetes.clusterName }} 
+    }
+    track_script {
+       apiserver_check weight 20
+    }
+}
+

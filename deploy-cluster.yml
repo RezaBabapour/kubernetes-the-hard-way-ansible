@@ -1,0 +1,65 @@
+- name: Determine serial value based on install variable
+  hosts: localhost_group
+  gather_facts: no
+  tasks:
+    - name: Set serial value for cluster nodes
+      set_fact:
+        serial_value: "{{ '1' if (install | default(false) | bool == false) else '100%' }}"
+  tags:
+  - always
+
+- name: Base tools preparation
+  become: yes
+  gather_facts: no
+  hosts: controller
+  roles:
+    - pre
+  tags:
+    - pre
+
+- name: Generate configs
+  become: yes
+  gather_facts: no
+  hosts: localhost_group
+  roles:
+    - config
+  tags:
+    - config
+
+- name: Setup etcd cluster
+  become: yes
+  gather_facts: no
+  hosts: etcd
+  roles:
+    - etcd
+  tags:
+    - etcd
+
+- name: Setup worker nodes
+  gather_facts: no
+  become: yes
+  hosts: worker
+  roles:
+    - worker
+  serial: "{{ hostvars['localhost'].serial_value }}"
+  tags:
+    - worker
+
+- name: Setup controller cluster
+  gather_facts: no
+  become: yes
+  hosts: controller
+  roles:
+    - controller
+  serial: "{{ hostvars['localhost'].serial_value }}"
+  tags:
+    - controller
+
+- name: Setup calio CNI & coredns service discovery & ingress-controller & storageClass
+  gather_facts: no
+  become: yes
+  hosts: controller
+  roles:
+    - addons
+  tags:
+    - addons

@@ -1,0 +1,38 @@
+---
+- name: Copy configs into controller nodes
+  copy:
+    src: "{{item}}"
+    dest: /tmp
+    owner: root
+    group: root
+    mode: 0644
+  loop:
+    - "{{ kubernetes.certificate.directory }}/encryption-config.yaml"
+    - "{{ kubernetes.certificate.directory }}/ca.pem"
+    - "{{ kubernetes.certificate.directory }}/ca-key.pem"
+    - "{{ kubernetes.certificate.directory }}/admin.pem"
+    - "{{ kubernetes.certificate.directory }}/admin-key.pem"
+    - "{{ kubernetes.certificate.directory }}/kubernetes.pem"
+    - "{{ kubernetes.certificate.directory }}/kubernetes-key.pem"
+    - "{{ kubernetes.certificate.directory }}/service-account.pem"
+    - "{{ kubernetes.certificate.directory }}/service-account-key.pem"
+    - "{{ kubernetes.certificate.directory }}/admin.kubeconfig"
+    - "{{ kubernetes.certificate.directory }}/kube-controller-manager.kubeconfig"
+    - "{{ kubernetes.certificate.directory }}/kube-scheduler.kubeconfig"
+
+- name: Copy controller binaries to controller nodes to /tmp
+  copy: 
+    src: "{{ item.src }}" 
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+    mode: 0744
+  loop:
+    - src: "{{ kubernetes.bin.directory }}/{{ kubernetes.version }}/kube-apiserver"
+      dest: "/tmp/{{ kubernetes.version }}/"
+    - src: "{{ kubernetes.bin.directory }}/{{ kubernetes.version }}/kube-controller-manager"
+      dest: "/tmp/{{ kubernetes.version }}/"
+    - src: "{{ kubernetes.bin.directory }}/{{ kubernetes.version }}/kube-scheduler"
+      dest: "/tmp/{{ kubernetes.version }}/"
+    - src: "{{ kubernetes.bin.directory }}/{{ kubernetes.version }}/kubectl"
+      dest: "/tmp/{{ kubernetes.version }}/"

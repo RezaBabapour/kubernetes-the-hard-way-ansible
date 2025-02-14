@@ -1,0 +1,9 @@
+---
+- name: Create certs
+  include_tasks: cert.yml
+
+- name: Create kubeconfigs
+  include_tasks: kubeconfig.yml
+
+- name: Create encryption config
+  include_tasks: encryption.yml

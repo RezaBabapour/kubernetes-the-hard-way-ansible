@@ -1,0 +1,29 @@
+---
+- name: Copy etcd files
+  include_tasks: copy-etcd.yml
+  tags:
+    - copy-etcd
+
+- name: Check if etcd is installed
+  command: systemctl status etcd
+  ignore_errors: true
+  register: etcd_status
+  changed_when: false
+  failed_when: false
+  run_once: true
+
+- name: Debug show etcd status
+  debug:
+    var: etcd_status.rc
+
+- name: Create etcd backup
+  include_tasks: backup-etcd.yml
+  when: etcd_status.rc == 0
+  tags:
+    - backup-etcd
+
+- name: Setup etcd cluster
+  include_tasks: setup-etcd.yml
+  tags:
+    - setup-etcd
+

@@ -1,0 +1,40 @@
+---
+- name: Add cilium helm repo
+  kubernetes.core.helm_repository:
+    name: cilium
+    repo_url: https://helm.cilium.io
+  run_once: true
+
+- name: Install cilium Chart
+  kubernetes.core.helm:
+    name: cilium
+    namespace: kube-system
+    create_namespace: true
+    chart_ref: cilium/cilium
+    chart_version: "{{ kubernetes.ciliumVersion }}"
+    values:
+      bpf:
+        hostLegacyRouting: false
+      cluster:
+        name: "{{ kubernetes.clusterName }}"
+      cni:
+        customConf: false
+        uninstall: false
+      ipam:
+        mode: cluster-pool
+        operator:
+          clusterPoolIPv4PodCIDRList:
+          - "{{ kubernetes.network['pod-cidr'] }}"
+      k8sServiceHost: "{{ kubernetes.clusterName }}"
+      k8sServicePort: 6443
+      kubeProxyReplacement: true
+      operator:
+        replicas: 1
+        unmanagedPodWatcher:
+          restart: true
+      policyEnforcementMode: default
+      routingMode: tunnel
+      tunnelPort: 8473
+      tunnelProtocol: vxlan
+  run_once: true
+

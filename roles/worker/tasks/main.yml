@@ -1,0 +1,20 @@
+---
+- name: Include disable-swap
+  include_tasks: disable-swap.yml
+  tags:
+    - disable-swap
+
+- name: Include Copy worker files
+  include_tasks: copy-worker.yml
+  tags:
+    - copy-worker
+
+- name: Include worker network configs
+  include_tasks: network.yml
+  tags:
+    - worker-network
+
+- name: Include setup worker nodes
+  include_tasks: worker.yml
+  tags:
+    - setup-worker

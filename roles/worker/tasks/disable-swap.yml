@@ -1,0 +1,6 @@
+---
+- name: Disable SWAP
+  shell: |
+    swapoff -a
+    sed -e "/swap/ s/^#*/#/" -i /etc/fstab
+    systemctl mask swap.target

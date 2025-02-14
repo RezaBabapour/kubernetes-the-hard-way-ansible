@@ -1,0 +1,39 @@
+ansible_python_interpreter: /usr/bin/python3
+
+harbor:
+  address: hub.simurgh.academy
+
+kubernetes:
+  clusterName: simurgh-local-01
+  ciliumVersion: 1.16.2
+  etcdVersion: v3.5.10
+  nerdctlVersion: v1.7.3
+  runcVersion: v1.1.10
+  containerdVersion: v1.7.9
+  cniVersion: v1.3.0
+  helmVersion: v3.14.0
+  version: v1.29.6
+  network:
+    vip: 192.168.112.140  #Defined by network provider
+    pod-cidr: 172.31.0.0/16
+    service-cidr: 172.30.0.0/16
+  certificate:
+    directory: "{{ playbook_dir }}/certs"
+  encryptionProvider:
+    key: lEavntB2OBsFPU7ob7nU9zZNReF4b4CmIduDh3m0/7I=
+  bin:
+    directory: "{{ playbook_dir }}/files"
+
+etcd:
+  domain: simurgh.academy
+
+pki:
+  ca:
+    expireTime: 17520h
+    certificate:
+      expireTime: 8760h
+    city: Tehran
+    country: IR
+    organizationUnit: SimurghAcademy
+    province: Tehran
+

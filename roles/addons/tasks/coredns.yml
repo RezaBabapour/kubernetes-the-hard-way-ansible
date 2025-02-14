@@ -1,0 +1,18 @@
+---
+- name: Add coredns helm repo
+  kubernetes.core.helm_repository:
+    name: coredns
+    repo_url: https://coredns.github.io/helm
+  run_once: true
+
+- name: Install codedns Chart
+  kubernetes.core.helm:
+    name: coredns
+    namespace: kube-system
+    chart_ref: coredns/coredns
+    values:
+      replicaCount: 2
+      service:
+        clusterIP: "{{ kubernetes.network['service-cidr'] | ansible.utils.ipmath(10) }}"
+  run_once: true
+

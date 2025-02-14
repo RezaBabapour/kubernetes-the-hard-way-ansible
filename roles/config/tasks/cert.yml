@@ -1,0 +1,116 @@
+---
+- name: Ensure certificates directory exists
+  file:
+    path: "{{ kubernetes.certificate.directory }}"
+    state: directory
+
+- name: Create CA configuration file
+  template:
+    src: ca-config.json.j2
+    dest: "{{ kubernetes.certificate.directory }}/ca-config.json"
+
+- name: Create CA CSR file
+  template:
+    src: ca-csr.json.j2
+    dest: "{{ kubernetes.certificate.directory }}/ca-csr.json"
+
+- name: Check if CA certificate exists
+  stat:
+    path: "{{ kubernetes.certificate.directory }}/ca.pem"
+  register: ca_certificate
+
+- debug:
+    var: ca_certificate.stat.exists
+
+- name: Generate CA certificate and key if not exists
+  shell: |
+    cfssl gencert -initca {{ kubernetes.certificate.directory }}/ca-csr.json | cfssljson -bare ca
+  args:
+    chdir: "{{ kubernetes.certificate.directory }}"
+  when: not ca_certificate.stat.exists
+
+- name: Create Admin CSR file
+  template:
+    src: admin-csr.json.j2
+    dest: "{{ kubernetes.certificate.directory }}/admin-csr.json"
+
+- name: Generate Admin certificate and key
+  shell: cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=kubernetes admin-csr.json | cfssljson -bare admin
+  args:
+    chdir: "{{ kubernetes.certificate.directory }}"
+
+- name: Create Worker CSR file
+  template:
+    src: worker-csr.json.j2
+    dest: "{{ kubernetes.certificate.directory }}/{{ item }}-csr.json"
+  with_items: "{{ groups['worker'] }}"
+
+- name: Generate worker node certificates
+  shell: >
+    cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json
+    -hostname="{{ item }},{{ hostvars[item].ansible_host }}"
+    -profile=kubernetes
+    "{{ item }}-csr.json" | cfssljson -bare "{{ item }}"
+  with_items: "{{ groups['worker'] }}"
+  args:
+    chdir: "{{ kubernetes.certificate.directory }}"
+
+- name: Create Controller Manager Client CSR file
+  template:
+    src: kube-controller-manager-csr.json.j2
+    dest: "{{ kubernetes.certificate.directory }}/kube-controller-manager-csr.json"
+
+- name: Generate Controller Manager Client certificate and key
+  shell: cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=kubernetes kube-controller-manager-csr.json | cfssljson -bare kube-controller-manager
+  args:
+    chdir: "{{ kubernetes.certificate.directory }}"
+
+- name: Create Scheduler Client CSR file
+  template:
+    src: kube-scheduler-csr.json.j2
+    dest: "{{ kubernetes.certificate.directory }}/kube-scheduler-csr.json"
+
+- name: Generate Scheduler Client certificate and key
+  shell: cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=kubernetes kube-scheduler-csr.json | cfssljson -bare kube-scheduler
+  args:
+    chdir: "{{ kubernetes.certificate.directory }}"
+
+- name: Create Kubernetes CSR JSON file
+  template:
+    src: kubernetes-csr.json.j2
+    dest: "{{ kubernetes.certificate.directory }}/kubernetes-csr.json"
+
+- name: Set Kubernetes Hostnames
+  set_fact:
+    kubernetes_hostnames: "mutate-webhook.kube-system.svc.cluster.local,mutate-webhook.kube-system.svc,kubernetes,kubernetes.default,kubernetes.default.svc,kubernetes.default.svc.cluster,kubernetes.svc.cluster.local"
+
+- name: Gather controller node hostnames
+  set_fact:
+    controller_hostnames: "{{ groups['controller'] | map('extract', hostvars, ['inventory_hostname']) | join(',') }}"
+
+- name: Construct etcd server FQDN
+  set_fact:
+    etcd_fqdn: "{{ groups['etcd'] | map('extract', hostvars, 'inventory_hostname') | map('regex_replace', '^(.+)$', '\\1.' + etcd.domain) | join(',') }}"
+
+- name: Calculate first available IP address in service CIDR
+  set_fact:
+    service_network_cidr: "{{ kubernetes.network['service-cidr'] | ansible.utils.ipmath(1) }}"
+
+- name: Generate Kubernetes API Server Certificate and Key
+  shell: |
+    cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json \
+      -hostname=127.0.0.1,{{ etcd_fqdn }},{{ service_network_cidr }},{{ controller_hostnames }},{{ kubernetes_hostnames }},{{ kubernetes.clusterName }} \
+      -profile=kubernetes kubernetes-csr.json | cfssljson -bare kubernetes
+  args:
+    chdir: "{{ kubernetes.certificate.directory }}"
+
+- name: Create Service Account CSR file
+  template:
+    src: service-account-csr.json.j2
+    dest: "{{ kubernetes.certificate.directory }}/service-account-csr.json"
+
+- name: Generate Service Account certificate and key
+  shell: cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=kubernetes service-account-csr.json | cfssljson -bare service-account
+  args:
+    chdir: "{{ kubernetes.certificate.directory }}"
+

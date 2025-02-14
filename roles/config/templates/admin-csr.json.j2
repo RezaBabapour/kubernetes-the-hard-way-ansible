@@ -1,0 +1,14 @@
+{
+  "CN": "admin",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [{
+        "C": "{{ pki.ca.country }}",
+        "L": "{{ pki.ca.city }}",
+        "O": "system:masters",
+        "OU": "{{ pki.ca.organizationUnit }}",
+        "ST": "{{ pki.ca.province }}"
+    }]
+}

@@ -1,0 +1,140 @@
+---
+# - name: Install socat, conntrack, and ipset
+#   yum:
+#     name:
+#       - socat
+#       - conntrack
+#       - ipset
+#     state: present
+
+- name: Create Directories
+  file:
+    path: "{{ item }}"
+    state: directory
+  loop:
+    - /etc/cni/net.d
+    - /opt/cni/bin
+    - /var/lib/kubelet
+    - /var/lib/kubernetes
+    - /var/run/kubernetes
+    - /etc/containerd/
+    - /etc/kubernetes/manifests/
+
+- name: Copy nerdctl binary file to /usr/bin/
+  copy:
+    src: /tmp/nerdctl-{{ kubernetes.nerdctlVersion }}/nerdctl
+    dest: /usr/bin/
+    mode: 0744
+    remote_src: yes
+
+- name: Add nerdctl bash completion 
+  shell: |
+    nerdctl completion bash > /etc/bash_completion.d/nerdctl
+
+- name: Cordon the worker node (only if upgrading)
+  command: kubectl cordon {{ inventory_hostname }}
+  when: install is not defined or install | bool == false
+  delegate_to: "{{ groups['controller'] | first }}"
+  ignore_errors: yes
+
+- name: Drain the worker node (only if upgrading)
+  command: kubectl drain {{ inventory_hostname }} --ignore-daemonsets --delete-emptydir-data --force --grace-period=20
+  when: install is not defined or install | bool == false
+  delegate_to: "{{ groups['controller'] | first }}"
+  ignore_errors: yes
+
+- name: Stop Worker Services
+  systemd:
+    name: "{{ item }}"
+    state: stopped
+    enabled: false
+  ignore_errors: yes
+  with_items:
+    - kubelet
+    - containerd
+
+- name: Copy containerd binary files to /usr/local/bin/
+  copy:
+    src: /tmp/containerd-{{ kubernetes.containerdVersion }}/
+    dest: /usr/local/bin/
+    mode: 0744
+    remote_src: yes
+
+- name: Copy cni-plugins binary files to /opt/cni/bin/
+  copy:
+    src: /tmp/cni-{{ kubernetes.cniVersion }}/
+    dest: /opt/cni/bin/
+    mode: 0744
+    remote_src: yes
+
+- name: Copy worker binary files
+  copy:
+    src: "{{ item }}"
+    dest: /usr/local/bin/
+    mode: 0744
+    remote_src: yes
+  with_items:
+    - /tmp/{{ kubernetes.version }}/kubelet
+    - /tmp/runc-{{ kubernetes.runcVersion }}/runc
+
+- name: Copy certs to /var/lib/kubelet/
+  copy:
+    src: "{{ item }}"
+    dest: /var/lib/kubelet/
+    remote_src: yes
+  with_items:
+    - "/tmp/{{ inventory_hostname }}-key.pem"
+    - "/tmp/{{ inventory_hostname }}.pem"
+
+- name: Copy configs to worker /var/lib/kubelet/kubeconfig
+  copy:
+    src: "/tmp/{{ inventory_hostname }}.kubeconfig"
+    dest: /var/lib/kubelet/kubeconfig
+    remote_src: yes
+
+- name: Copy configs to worker /var/lib/kubernetes/
+  copy:
+    src: /tmp/ca.pem
+    dest: /var/lib/kubernetes/
+    remote_src: yes
+
+- name: Create the Containerd configuration file
+  template:
+    src: config.toml.j2
+    dest: /etc/containerd/config.toml
+    mode: 0644
+
+- name: Create the containerd.service systemd unit file
+  template:
+    src: containerd.service.j2
+    dest: /etc/systemd/system/containerd.service
+    mode: 0644
+
+- name: Create the kubelet-config.yaml configuration file
+  template:
+    src: kubelet-config.yaml.j2
+    dest: /var/lib/kubelet/kubelet-config.yaml
+    mode: 0644
+
+- name: Create the kubelet.service systemd unit file
+  template:
+    src: kubelet.service.j2
+    dest: /etc/systemd/system/kubelet.service
+    mode: 0644
+
+- name: Restart Worker Services
+  systemd:
+    name: "{{ item }}"
+    state: restarted
+    daemon_reload: yes
+    enabled: yes
+  with_items:
+    - kubelet
+    - containerd
+
+- name: Uncordon the worker node (only if upgrading)
+  command: kubectl uncordon "{{ inventory_hostname }}"
+  when: install is not defined or install | bool == false
+  delegate_to: "{{ groups['controller'] | first }}"
+  ignore_errors: yes
+

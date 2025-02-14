@@ -1,0 +1,5 @@
+---
+- name: Create Encryption Config file
+  template:
+    src: encryption-config.yaml.j2
+    dest: "{{ kubernetes.certificate.directory }}/encryption-config.yaml"

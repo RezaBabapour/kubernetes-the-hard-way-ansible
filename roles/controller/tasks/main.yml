@@ -1,0 +1,26 @@
+---
+# - name: Setup keepalived
+#   include_tasks: keepalived.yml
+#   tags:
+#     - keepalived
+
+- name: Copy controller files
+  include_tasks: copy-controller.yml
+  tags:
+    - copy-controller
+
+- name: Setup controller nodes
+  include_tasks: controller.yml
+  tags:
+    - setup-controller
+
+- name: Include setup kube-vip
+  include_tasks: kube-vip.yml
+  tags:
+    - kube-vip
+
+- name: Create RBAC roles
+  include_tasks: kubelet-rbac.yml
+  tags:
+    - kubelet-rbac
+

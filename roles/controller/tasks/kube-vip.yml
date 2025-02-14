@@ -1,0 +1,27 @@
+---
+- name: Make sure /etc/kubernetes/manifests/ exist
+  file:
+    path: /etc/kubernetes/manifests/
+    state: directory
+
+# How to create manifest file
+# manifest pod --interface ens160 --address 10.248.42.30 --controlplane --services --arp --leaderElection --k8sConfigPath /var/lib/kubernetes/admin.kubeconfig
+- name: Create kube-vip manifest file
+  template:
+    src: kube-vip.yaml.j2
+    dest: /etc/kubernetes/manifests/kube-vip.yaml
+    mode: 644
+
+- name: Wait for 10 seconds to kube-vip services sync
+  pause:
+    seconds: 10
+
+- name: Restart kubelet service
+  systemd:
+    name: kubelet
+    state: restarted
+    daemon_reload: yes
+    enabled: yes
+  ignore_errors: yes
+  delegate_to: "{{ item }}"
+  with_items: "{{ groups['controller'] }}"

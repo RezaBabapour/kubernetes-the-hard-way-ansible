@@ -1,0 +1,26 @@
+---
+- name: Add projectcalico helm repo
+  kubernetes.core.helm_repository:
+    name: projectcalico
+    repo_url: https://docs.tigera.io/calico/charts
+  run_once: true
+
+- name: Install calico Chart
+  kubernetes.core.helm:
+    name: calico
+    namespace: tigera-operator
+    create_namespace: true
+    chart_ref: projectcalico/tigera-operator
+    chart_version: "{{ kubernetes.calicoVersion }}"
+    values:
+      installation:
+        cni:
+          type: Calico
+        calicoNetwork:
+          bgp: Disabled
+          ipPools:
+          - cidr: "{{ kubernetes.network['pod-cidr'] }}"
+            encapsulation: VXLANCrossSubnet
+            blockSize: 24
+  run_once: true
+

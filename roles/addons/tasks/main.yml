@@ -1,0 +1,34 @@
+---
+- name: Add labels to nodes
+  include_tasks: label-nodes.yml
+  tags:
+    - label-nodes
+
+- name: Add storageclass
+  include_tasks: storageclass.yml
+  tags:
+    - storageclass
+
+# - name: Deploy calico on cluster
+#   include_tasks: calico.yml
+#   when: install is defined and install | bool
+#   tags:
+#     - calico
+
+- name: Deploy cilium on cluster
+  include_tasks: cilium.yml
+  when: install is defined and install | bool
+  tags:
+    - cilium
+
+- name: Deploy coredns on cluster
+  include_tasks: coredns.yml
+  tags:
+    - coredns
+
+- name: Deploy ingress-controller on cluster
+  include_tasks: ingress-controller.yml
+  tags:
+    - ingress-controller
+
+

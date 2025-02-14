@@ -1,0 +1,33 @@
+---
+- name: Create backup on first etcd node
+  shell: |
+    /usr/local/bin/etcdctl snapshot save /tmp/snapshot-$(date +%d-%m-%Y).db --endpoints=https://{{ inventory_hostname }}.{{ etcd.domain }}:2379 --cacert=/etc/etcd/ca.pem --cert=/etc/etcd/kubernetes.pem --key=/etc/etcd/kubernetes-key.pem
+    chown {{ ansible_user }}: /tmp/snapshot-$(date +%d-%m-%Y).db
+  run_once: true
+  delegate_to: "{{ play_hosts | first }}"
+
+- name: Copy etcd backup to etcd nodes
+  shell: |
+    sshpass -p {{ ansible_ssh_pass }} scp -o StrictHostKeyChecking=no /tmp/snapshot-$(date +%d-%m-%Y).db {{ ansible_user }}@{{ hostvars[item].inventory_hostname }}:/tmp
+  with_items: "{{ groups['etcd'] }}"
+  run_once: true
+  delegate_to: "{{ play_hosts | first }}"
+
+- name: Stop etcd
+  systemd:
+    name: etcd
+    state: stopped
+    daemon_reload: no
+  ignore_errors: true
+
+- name: Remove existing etcd data
+  shell: |
+    rm /var/lib/etcd/member -rf
+
+- name: Edit snapshot nodes
+  shell: >
+    /usr/local/bin/etcdutl snapshot restore /tmp/snapshot-$(date +%d-%m-%Y).db --name {{ inventory_hostname }}
+    --initial-cluster "{% for node in groups['etcd'] %}{{ node }}=https://{{ node }}.{{ etcd.domain }}:2380{% if not loop.last %},{% endif %}{% endfor %}"
+    --initial-cluster-token etcd-cluster-0
+    --initial-advertise-peer-urls https://{{ inventory_hostname }}.{{ etcd.domain }}:2380 --data-dir /var/lib/etcd/
+#--initial-cluster "{% for node in groups['etcd'] %}{{ node }}=https://{{ hostvars[node].inventory_hostname }}.{{ etcd.domain }}:2380{% if not loop.last %},{% endif %}{% endfor %}"

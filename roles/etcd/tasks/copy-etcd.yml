@@ -1,0 +1,27 @@
+---
+- name: Copy certs into etcd nodes
+  copy:
+    src: "{{item}}"
+    dest: /tmp
+    owner: root
+    group: root
+    mode: 0644
+  loop:
+    - "{{ kubernetes.certificate.directory }}/ca.pem"
+    - "{{ kubernetes.certificate.directory }}/kubernetes.pem"
+    - "{{ kubernetes.certificate.directory }}/kubernetes-key.pem"
+
+- name: ensure "/tmp/etcd-{{ kubernetes.etcdVersion }}/" directory exists
+  file:
+    path: "/tmp/etcd-{{ kubernetes.etcdVersion }}/"
+    recurse: true
+    state: directory
+
+- name: Copy etcd binaries to etcd nodes
+  copy:
+    src: "{{ kubernetes.bin.directory }}/etcd-{{ kubernetes.etcdVersion }}/"
+    dest: "/tmp/etcd-{{ kubernetes.etcdVersion }}/"
+    owner: root
+    group: root
+    mode: 0744
+

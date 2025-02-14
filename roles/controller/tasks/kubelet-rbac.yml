@@ -1,0 +1,70 @@
+---
+- name: Add vip dns name to /etc/hosts
+  shell: |
+    grep -q "{{ kubernetes.clusterName }}" /etc/hosts || echo "{{ kubernetes.network.vip }} {{ kubernetes.clusterName }}" >> /etc/hosts
+
+- name: Create ClusterRole for API Server to access the Kubelet API
+  command: kubectl apply --kubeconfig admin.kubeconfig -f -
+  args:
+    chdir: /var/lib/kubernetes/
+    stdin: |
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRole
+      metadata:
+        annotations:
+          rbac.authorization.kubernetes.io/autoupdate: "true"
+        labels:
+          kubernetes.io/bootstrapping: rbac-defaults
+        name: system:kube-apiserver-to-kubelet
+      rules:
+        - apiGroups:
+            - ""
+          resources:
+            - nodes/proxy
+            - nodes/stats
+            - nodes/log
+            - nodes/spec
+            - nodes/metrics
+          verbs:
+            - "*"
+  run_once: true
+  register: clusterRole
+
+- debug:
+    var: clusterRole.stdout
+
+- name: Bind the system:kube-apiserver-to-kubelet ClusterRole to the kubernetes user
+  command: kubectl apply --kubeconfig admin.kubeconfig -f -
+  args:
+    chdir: /var/lib/kubernetes/
+    stdin: |
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRoleBinding
+      metadata:
+        name: system:kube-apiserver
+        namespace: ""
+      roleRef:
+        apiGroup: rbac.authorization.k8s.io
+        kind: ClusterRole
+        name: system:kube-apiserver-to-kubelet
+      subjects:
+        - apiGroup: rbac.authorization.k8s.io
+          kind: User
+          name: kubernetes
+  run_once: true
+
+- name: Configuring kubectl for Remote Access
+  args:
+    chdir: /var/lib/kubernetes/
+  shell: |
+    /usr/local/bin/kubectl config set-cluster {{ kubernetes.clusterName }} \
+    --certificate-authority=ca.pem \
+    --embed-certs=true \
+    --server=https://"{{ kubernetes.clusterName }}":6443
+    /usr/local/bin/kubectl config set-credentials admin \
+    --client-certificate=admin.pem \
+    --client-key=admin-key.pem
+    /usr/local/bin/kubectl config set-context admin \
+    --cluster={{ kubernetes.clusterName }} \
+    --user=admin
+    /usr/local/bin/kubectl config use-context admin
