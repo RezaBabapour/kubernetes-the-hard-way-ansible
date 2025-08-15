@@ -8,7 +8,8 @@ all:
           ansible_host: 192.168.112.130
         k8s-131:
           ansible_host: 192.168.112.131
-    
+        k8s-132:
+          ansible_host: 192.168.112.132
       children:
         localhost_group:
           hosts:
@@ -28,3 +29,5 @@ all:
             k8s-129:
             k8s-130:
             k8s-131:
+            k8s-132:
+              new_node: true

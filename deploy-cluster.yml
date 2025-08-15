@@ -8,6 +8,26 @@
   tags:
   - always
 
+- name: Build new_nodes group dynamically
+  hosts: localhost_group
+  gather_facts: no
+  tags:
+    - always
+  tasks:
+    - name: Add worker hosts that have new_node=true to runtime group new_nodes
+      add_host:
+        name: "{{ item }}"
+        groups: new_nodes
+        ansible_host: "{{ hostvars[item].ansible_host | default(omit) }}"
+      loop: "{{ groups['worker'] }}"
+      when: hostvars[item].new_node | default(false) | bool
+      run_once: true
+
+    - name: Show members of new_nodes (runtime)
+      debug:
+        var: groups['new_nodes']
+      run_once: true
+
 - name: Base tools preparation
   become: yes
   gather_facts: no
@@ -38,7 +58,7 @@
 - name: Setup worker nodes
   gather_facts: no
   become: yes
-  hosts: worker
+  hosts: "{{ 'new_nodes' if add_new_node | default(false) else 'worker' }}"
   roles:
     - worker
   serial: "{{ hostvars['localhost'].serial_value }}"

@@ -95,6 +95,10 @@ files/
 ansible-playbook -i inventory/simurgh.yml -kK -e ansible_user=user -e install=1 deploy-cluster.yml
 ```
 
+2. Add new nodes
+```bash
+ansible-playbook -i inventory/simurgh.yml -kK -e ansible_user=reza -e add_new_node=true deploy-cluster.yml --tags=worker
+```
 ## TODO
 
 # create snapshot
