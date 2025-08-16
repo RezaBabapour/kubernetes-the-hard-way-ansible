@@ -16,6 +16,7 @@
         admissionWebhooks:
           enabled: false
         hostNetwork: true
+        dnsPolicy: ClusterFirstWithHostNet
         service:
           type: ""
         kind: DaemonSet
